@@ -1,0 +1,56 @@
+
+/**
+ * 이벤트 응모 폼 제출 시 자동 실행되는 함수
+ */
+function onFormSubmit(e) {
+
+  // 응답이 입력된 시트 가져오기
+  const sheet = e.range.getSheet();
+
+  // '이벤트응모' 시트에서만 실행
+  if (sheet.getName() !== '이벤트응모') {
+    return;
+  }
+
+  // 새로 입력된 행 번호 가져오기
+  const row = e.range.getRow();
+
+  // 해당 행의 데이터 가져오기
+  const email = sheet.getRange(row, 2).getValue();  // B열: 이메일
+  const name = sheet.getRange(row, 3).getValue();   // C열: 이름
+  const interest = sheet.getRange(row, 4).getValue(); // D열: 관심분야
+  const consent = sheet.getRange(row, 6).getValue();  // F열: 수신동의
+
+  // 담당자 이메일 주소 설정
+  const managerEmail = '담당자이메일@example.com';
+
+  // 수신동의가 '동의'인 경우에만 응모자에게 확인 메일 발송
+  if (consent === '동의') {
+
+    const subject = '[이벤트] 응모 접수가 완료되었습니다';
+
+    const body =
+      name + '님, 안녕하세요!\n\n' +
+      '이벤트 응모가 정상적으로 접수되었습니다.\n\n' +
+      '이름: ' + name + '\n' +
+      '관심분야: ' + interest + '\n\n' +
+      '이벤트에 참여해 주셔서 감사합니다.\n' +
+      '좋은 하루 보내세요!';
+
+    // 응모자에게 접수 확인 메일 발송
+    MailApp.sendEmail(email, subject, body);
+  }
+
+  // 담당자에게 새 응모 접수 알림 발송
+  const managerSubject = '[이벤트] 새로운 응모가 접수되었습니다';
+
+  const managerBody =
+    '새로운 이벤트 응모가 접수되었습니다.\n\n' +
+    '이름: ' + name + '\n' +
+    '이메일: ' + email + '\n' +
+    '관심분야: ' + interest + '\n' +
+    '수신동의: ' + consent;
+
+  MailApp.sendEmail(managerEmail, managerSubject, managerBody);
+
+}
