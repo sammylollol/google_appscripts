@@ -1,0 +1,82 @@
+
+function sendDailyReport() {
+  // 스프레드시트와 '일일지표' 시트 가져오기
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName('일일지표');
+
+  // 시트가 없으면 오류 발생
+  if (!sheet) {
+    throw new Error("'일일지표' 시트를 찾을 수 없습니다.");
+  }
+
+  // 데이터가 없는 경우 종료
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) {
+    return;
+  }
+
+  // A~F열 데이터 가져오기 (1행은 제목이라고 가정)
+  const data = sheet.getRange(2, 1, lastRow - 1, 6).getValues();
+
+  // 날짜가 유효한 행만 필터링
+  const validRows = data.filter(row => {
+    return row[0] instanceof Date && !isNaN(row[0].getTime());
+  });
+
+  // 날짜 데이터가 하나도 없으면 종료
+  if (validRows.length === 0) {
+    return;
+  }
+
+  // 가장 최근 날짜의 행 찾기
+  const latestRow = validRows.reduce((latest, current) => {
+    return current[0] > latest[0] ? current : latest;
+  });
+
+  // 각 항목의 값 가져오기
+  const reportDate = latestRow[0];
+  const visitors = latestRow[1];    // 방문자수
+  const newMembers = latestRow[2];  // 신규가입
+  const orders = latestRow[3];      // 주문건수
+  const revenue = Number(latestRow[4]) || 0;  // 매출
+  const adCost = Number(latestRow[5]) || 0;    // 광고비
+
+  // 매출 대비 광고비 비율 계산
+  // 매출이 0이면 0%로 처리
+  const adCostRatio = revenue !== 0
+    ? (adCost / revenue) * 100
+    : 0;
+
+  // 날짜 형식 지정
+  const timeZone = ss.getSpreadsheetTimeZone();
+  const formattedDate = Utilities.formatDate(
+    reportDate,
+    timeZone,
+    'yyyy-MM-dd'
+  );
+
+  // 숫자에 천 단위 콤마 적용
+  const numberFormat = value =>
+    Number(value || 0).toLocaleString('ko-KR');
+
+  // 메일 제목 작성
+  const subject = `[일일지표 보고] ${formattedDate}`;
+
+  // 메일 본문 작성
+  const body =
+    `안녕하세요.\n\n` +
+    `[${formattedDate} 일일지표 요약]\n\n` +
+    `■ 방문자수: ${numberFormat(visitors)}명\n` +
+    `■ 신규가입: ${numberFormat(newMembers)}명\n` +
+    `■ 주문건수: ${numberFormat(orders)}건\n` +
+    `■ 매출: ${numberFormat(revenue)}원\n` +
+    `■ 광고비: ${numberFormat(adCost)}원\n` +
+    `■ 매출 대비 광고비 비율: ${adCostRatio.toFixed(2)}%\n\n` +
+    `감사합니다.`;
+
+  // 현재 스크립트를 실행하는 계정의 이메일 주소 가져오기
+  const recipient = Session.getEffectiveUser().getEmail();
+
+  // 이메일 발송
+  GmailApp.sendEmail(recipient, subject, body);
+}
